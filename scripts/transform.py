@@ -8,6 +8,13 @@ def transform():
      df['year'] = df['date'].dt.year
      df.to_csv('data/transformed_events.csv', index=False)
 
+     if df.empty:
+          raise ValueError("Dataset is empty")
+
+     if "date" not in df.columns:
+          raise ValueError("Missing date column")
+
+
      print('Transformed data saved to data/transformed_events.csv')
      print('row count after transformation:', len(df))
 
