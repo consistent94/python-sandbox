@@ -1,31 +1,60 @@
 import requests
 import pandas as pd
+import os
 
-URL = 'https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&per_page=1000'
+URL = "https://api.worldbank.org/v2/country/all/indicator/SP.POP.TOTL?format=json&per_page=1000"
+STATE_FILE = "data/state.txt"
+
+
+def get_last_year():
+    try:
+        with open('data/last_year.txt', 'r') as f:
+            content = f.read().strip()
+            return int(content) if content else 2020
+    except FileNotFoundError:
+        return 2020
+
+
+def save_last_year(year):
+    with open(STATE_FILE, "w") as f:
+        f.write(str(year))
+
 
 def extract():
-    print('Extracting data from World Bank API...')
-    response = requests.get(URL)
-    data = response.json()
+    print("Extracting incremental data...")
 
-    records = data[1]
+    last_year = get_last_year()
+
+    response = requests.get(URL)
+    data = response.json()[1]
 
     rows = []
 
-    for item in records:
-        rows.append({
-            "country": item["country"]["value"],
-            "year": item["date"],
-            "population": item["value"]
-        })
+    for item in data:
+        if item["value"] is None:
+            continue
+
+        year = int(item["date"])
+
+        if year > last_year:
+            rows.append({
+                "country": item["country"]["value"],
+                "year": year,
+                "population": item["value"]
+            })
 
     df = pd.DataFrame(rows)
 
-    df.to_csv('data/raw_events.csv', index=False)
+    if not df.empty:
+        max_year = df["year"].max()
+        save_last_year(max_year)
 
-    print('Data extracted and saved to data/raw_events.csv', len(df), 'records extracted.')
+    df.to_csv("data/raw_events.csv", index=False)
+
+    print("New rows extracted:", len(df))
 
     return df
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     extract()
